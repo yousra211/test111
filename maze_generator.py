@@ -11,4 +11,10 @@ class MazeGenerator:
     def generate(self) -> None:
         if self.seed is not None:
             random.seed(self.seed)
+        self.maze = []
+        for y in range(self.height):
+            row = []
+            for x in range(self.width):
+                row.append({"N": True, "E": True, "S":True, "W": True})
+            self.maze.append(row)
 
