@@ -18,3 +18,10 @@ class MazeGenerator:
                 row.append({"N": True, "E": True, "S":True, "W": True})
             self.maze.append(row)
 
+    def DFS(self, x: int, y: int, visited: list[list]) -> None:
+        directions = [
+            ("N", "S", 0, -1),
+            ("S", "N", 0, 1),
+            ("E", "W", 1, 0),
+            ("W", "E", -1, 0)
+        ]
