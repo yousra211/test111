@@ -42,34 +42,44 @@ class MazeGenerator:
 
 
     def vertical_closed(self, x, y):
-        directions = [
-            ("N", "S", 0, -1),
-            ("S", "N", 0, 1),
-            ("E", "W", 1, 0),
-            ("W", "E", -1, 0)
-        ]
         for i in range(3):
-            for j in range(4):
-                nx = x + directions[j][2]
-                ny = y + directions[j][3]
-                if nx >= 0 and nx < self.width and ny >= 0 and ny < self.height and visited[ny][nx] == False:
-                    self.maze[y + i][x][directions[j][0]] = True
-                    self.maze[ny + i][nx][directions[j][1]] = True
+            cy = y + i
+
+            # close the cell
+            self.maze[cy][x]["N"] = True
+            self.maze[cy][x]["S"] = True
+            self.maze[cy][x]["E"] = True
+            self.maze[cy][x]["W"] = True
+
+            # update neighbors
+            if cy > 0:
+                self.maze[cy-1][x]["S"] = True
+            if cy < self.height - 1:
+                self.maze[cy+1][x]["N"] = True
+            if x > 0:
+                self.maze[cy][x-1]["E"] = True
+            if x < self.width - 1:
+                self.maze[cy][x+1]["W"] = True
 
     def horizontal_closed(self, x, y):
-        directions = [
-            ("N", "S", 0, -1),
-            ("S", "N", 0, 1),
-            ("E", "W", 1, 0),
-            ("W", "E", -1, 0)
-        ]
         for i in range(3):
-            for j in range(4):
-                nx = x + directions[j][2]
-                ny = y + directions[j][3]
-                if nx >= 0 and nx < self.width and ny >= 0 and ny < self.height and visited[ny][nx] == False:
-                    self.maze[y][x + i][directions[j][0]] = True
-                    self.maze[ny][nx + i][directions[j][1]] = True
+            cx = x + i
+
+            # close the cell
+            self.maze[y][cx]["N"] = True
+            self.maze[y][cx]["S"] = True
+            self.maze[y][cx]["E"] = True
+            self.maze[y][cx]["W"] = True
+
+            # update neighbors
+            if y > 0:
+                self.maze[y-1][cx]["S"] = True
+            if y < self.height - 1:
+                self.maze[y+1][cx]["N"] = True
+            if cx > 0:
+                self.maze[y][cx-1]["E"] = True
+            if cx < self.width - 1:
+                self.maze[y][cx+1]["W"] = True
 
     def check_open_area(self, x: int, y: int) -> bool:
         for bx in range(x - 2, x + 1):
@@ -176,7 +186,6 @@ class MazeGenerator:
             print(row_mid)
             print(row_bot)
 
-
-gen = MazeGenerator(16, 16, seed=42)
+gen = MazeGenerator(16, 16, seed=13)
 gen.generate()
 gen.print_maze()
