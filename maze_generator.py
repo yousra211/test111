@@ -1,118 +1,164 @@
 import random
 
 class MazeGenerator:
-    def __init__(self, width: int, height: int, seed: int = None, perfect:bool = True) -> None:
+    def __init__(self, width: int, height: int, seed: int = None, perfect: bool = True) -> None:
         self.width = width
         self.height = height
         self.seed = seed
         self.maze = None
         self.path = None
         self.perfect = perfect
+        self.pattern_cells = set()
 
     def generate(self) -> None:
         if self.seed is not None:
             random.seed(self.seed)
+
         self.maze = []
         visited = []
+
         for y in range(self.height):
             row = []
             visit = []
             for x in range(self.width):
-                row.append({"N": True, "E": True, "S":True, "W": True})
+                row.append({"N": True, "E": True, "S": True, "W": True})
                 visit.append(False)
             self.maze.append(row)
             visited.append(visit)
+
+        # build pattern cells before generating maze
+        self.build_pattern_cells()
+
+        # generate maze
         self.DFS(0, 0, visited)
 
-        if self.perfect == False:
+        if not self.perfect:
             self.imperfect()
+
+        # finally close the pattern cells
         self.pattern_42()
 
-    def pattern_42(self):
+    # 42 PATTERN
+
+    def build_pattern_cells(self):
         if self.width >= 12 and self.height >= 9:
-            self.vertical_closed((self.width // 2) - 3, (self.height // 2) - 2)
-            self.vertical_closed((self.width // 2) - 1, (self.height // 2))
-            self.vertical_closed((self.width // 2) + 1, (self.height // 2))
-            self.vertical_closed((self.width // 2) + 3, (self.height // 2) - 2)
+            cx = self.width // 2
+            cy = self.height // 2
 
-            self.horizontal_closed((self.width // 2) - 3, (self.height // 2))
-            self.horizontal_closed((self.width // 2) + 1, (self.height // 2) - 2)
-            self.horizontal_closed((self.width // 2) + 1, (self.height // 2))
-            self.horizontal_closed((self.width // 2) + 1, (self.height // 2) + 2)
+            def add_vertical(x, y):
+                for i in range(3):
+                    self.pattern_cells.add((x, y + i))
 
+            def add_horizontal(x, y):
+                for i in range(3):
+                    self.pattern_cells.add((x + i, y))
 
-    def vertical_closed(self, x, y):
-        for i in range(3):
-            cy = y + i
+            add_vertical(cx - 3, cy - 2)
+            add_vertical(cx - 1, cy)
+            add_vertical(cx + 1, cy)
+            add_vertical(cx + 3, cy - 2)
 
-            # close the cell
-            self.maze[cy][x]["N"] = True
-            self.maze[cy][x]["S"] = True
-            self.maze[cy][x]["E"] = True
-            self.maze[cy][x]["W"] = True
+            add_horizontal(cx - 3, cy)
+            add_horizontal(cx + 1, cy - 2)
+            add_horizontal(cx + 1, cy)
+            add_horizontal(cx + 1, cy + 2)
 
-            # update neighbors
-            if cy > 0:
-                self.maze[cy-1][x]["S"] = True
-            if cy < self.height - 1:
-                self.maze[cy+1][x]["N"] = True
-            if x > 0:
-                self.maze[cy][x-1]["E"] = True
-            if x < self.width - 1:
-                self.maze[cy][x+1]["W"] = True
+    def pattern_42(self):
+        for (x, y) in self.pattern_cells:
+            for d in ("N", "E", "S", "W"):
+                self.maze[y][x][d] = True
 
-    def horizontal_closed(self, x, y):
-        for i in range(3):
-            cx = x + i
+    # MAZE GENERATION
 
-            # close the cell
-            self.maze[y][cx]["N"] = True
-            self.maze[y][cx]["S"] = True
-            self.maze[y][cx]["E"] = True
-            self.maze[y][cx]["W"] = True
+    def DFS(self, start_x: int, start_y: int, visited: list[list]) -> None:
 
-            # update neighbors
-            if y > 0:
-                self.maze[y-1][cx]["S"] = True
-            if y < self.height - 1:
-                self.maze[y+1][cx]["N"] = True
-            if cx > 0:
-                self.maze[y][cx-1]["E"] = True
-            if cx < self.width - 1:
-                self.maze[y][cx+1]["W"] = True
+        stack = [(start_x, start_y)]
+
+        while stack:
+
+            x, y = stack[-1]
+            visited[y][x] = True
+
+            directions = [
+                ("N", "S", 0, -1),
+                ("S", "N", 0, 1),
+                ("E", "W", 1, 0),
+                ("W", "E", -1, 0)
+            ]
+
+            random.shuffle(directions)
+
+            moved = False
+
+            for d, opposite, dx, dy in directions:
+
+                nx = x + dx
+                ny = y + dy
+
+                if (
+                    0 <= nx < self.width
+                    and 0 <= ny < self.height
+                    and not visited[ny][nx]
+                    and (nx, ny) not in self.pattern_cells
+                ):
+
+                    self.maze[y][x][d] = False
+                    self.maze[ny][nx][opposite] = False
+
+                    stack.append((nx, ny))
+                    moved = True
+                    break
+
+            if not moved:
+                stack.pop()
+
+    # IMPERFECT MAZE OPTION
 
     def check_open_area(self, x: int, y: int) -> bool:
         for bx in range(x - 2, x + 1):
-            for by in range (y - 2, y + 1):
+            for by in range(y - 2, y + 1):
+
                 if bx >= 0 and bx + 2 < self.width and by >= 0 and by + 2 < self.height:
+
                     close = False
+
                     for j in range(3):
                         for i in range(3):
-                            if (self.maze[by + j][bx + i]["E"] == True and i != 2) or (self.maze[by + j][bx + i]["S"] == True and j != 2):
+
+                            if (
+                                (self.maze[by + j][bx + i]["E"] and i != 2)
+                                or (self.maze[by + j][bx + i]["S"] and j != 2)
+                            ):
                                 close = True
                                 break
-                        else:
-                            continue
-                        if close == True:
+
+                        if close:
                             break
-                        else:
-                            return True
+
+                    if not close:
+                        return True
+
         return False
 
+
     def imperfect(self):
+
         removable_walls = []
+
         for y in range(self.height):
-            for x in range (self.width):
-                if self.maze[y][x]["E"] == True and x + 1 < self.width:
+            for x in range(self.width):
+
+                if self.maze[y][x]["E"] and x + 1 < self.width:
                     removable_walls.append((y, x, "E"))
-                if self.maze[y][x]["S"] == True and y + 1 < self.height:
+
+                if self.maze[y][x]["S"] and y + 1 < self.height:
                     removable_walls.append((y, x, "S"))
+
         random.shuffle(removable_walls)
+
         for i in range(self.height * self.width * 10 // 100):
 
-            y_remove = removable_walls[i][0]
-            x_remove = removable_walls[i][1]
-            direct = removable_walls[i][2]
+            y_remove, x_remove, direct = removable_walls[i]
 
             self.maze[y_remove][x_remove][direct] = False
 
@@ -122,8 +168,10 @@ class MazeGenerator:
             elif direct == "S":
                 self.maze[y_remove + 1][x_remove]["N"] = False
 
-            if self.check_open_area(x_remove, y_remove) == True:
+            if self.check_open_area(x_remove, y_remove):
+
                 self.maze[y_remove][x_remove][direct] = True
+
                 if direct == "E":
                     self.maze[y_remove][x_remove + 1]["W"] = True
 
@@ -131,31 +179,10 @@ class MazeGenerator:
                     self.maze[y_remove + 1][x_remove]["N"] = True
 
 
-    def DFS(self, x: int, y: int, visited: list[list]) -> None:
-        directions = [
-            ("N", "S", 0, -1),
-            ("S", "N", 0, 1),
-            ("E", "W", 1, 0),
-            ("W", "E", -1, 0)
-        ]
-        visited[y][x] = True
-        random.shuffle(directions)
-        for i in range(4):
-            nx = x + directions[i][2]
-            ny = y + directions[i][3]
-            if nx >= 0 and nx < self.width and ny >= 0 and ny < self.height and visited[ny][nx] == False:
-                self.maze[y][x][directions[i][0]] = False
-                self.maze[ny][nx][directions[i][1]] = False
-                self.DFS(nx, ny, visited)
+    # PRINT MAZE
 
-
-
-
-
-# test
     def print_maze(self):
 
-        # top border
         print("+" + "---+" * self.width)
 
         for y in range(self.height):
@@ -165,27 +192,61 @@ class MazeGenerator:
 
             for x in range(self.width):
 
-                # west wall
                 row_mid += "|" if self.maze[y][x]["W"] else " "
 
-                # check if fully closed
-                if all(self.maze[y][x][d] for d in ("N","E","S","W")):
+                if all(self.maze[y][x][d] for d in ("N", "E", "S", "W")):
                     row_mid += " X "
                 else:
                     row_mid += "   "
 
-                # bottom walls
                 row_bot += "+"
                 row_bot += "---" if self.maze[y][x]["S"] else "   "
 
-            # east wall of last cell
-            row_mid += "|" if self.maze[y][self.width-1]["E"] else " "
-
+            row_mid += "|" if self.maze[y][self.width - 1]["E"] else " "
             row_bot += "+"
 
             print(row_mid)
             print(row_bot)
 
-gen = MazeGenerator(16, 16, seed=13)
-gen.generate()
-gen.print_maze()
+    def generate_hex_values(self) -> list[list]:
+        hex_values = []
+
+        N_value = 1
+        E_value = 2
+        S_value = 4
+        W_value = 8
+
+        hex_format = [ "0", "1", "2", "3", "4",
+            "5","6","7","8","9","A","B","C","D","E","F"
+        ]
+        for y in range(self.height):
+            hex_row = []
+            for x in range(self.width):
+                total = 0
+                if self.maze[y][x]["N"] == True:
+                    total += N_value
+                if self.maze[y][x]["E"] == True:
+                    total += E_value
+                if self.maze[y][x]["S"] == True:
+                    total += S_value
+                if self.maze[y][x]["W"] == True:
+                    total += W_value
+                hex_row.append(hex_format[total])
+            hex_values.append(hex_row)
+        return hex_values
+
+    def write_output(self, filepath: str, entry: tuple, exit: tuple):
+        hex_values = self.generate_hex_values()
+        with open(filepath, "w") as f:
+            for y in range(self.height):
+                for x in range(self.width):
+                    f.write(hex_values[y][x])
+                f.write("\n")
+            f.write("\n")
+            f.write(str(entry) + "\n")
+            f.write(str(exit) + "\n")
+# test
+# gen = MazeGenerator(16, 16, seed=42)
+# gen.generate()
+# gen.print_maze()
+# gen.write_output()
